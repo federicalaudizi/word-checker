@@ -29,20 +29,20 @@ void ht_insert(HashTable* table, char* key, char* value, int size, int k);
 
 
 int main() {
-    int k=5;
-
+    long int k;
+    char c[1];
+    char *ptr;
+    fgets(c, 5, stdin);
+    k = strtol(c, &ptr, 10);
     char input_str[k];
     int init_hash_size = 50;
     char val[] = "0";
 
     HashTable* table = create_table(init_hash_size);
-
+    printf("inserisci parole ammissibili \n");
     while (1) {
-        printf("inserisci parole ammissibili \n");
         fgets(input_str, 1000, stdin);
-        printf("%s\n", input_str);
         input_str[strlen(input_str) - 1] = '\0'; // removing \n at the end
-
 
         // starting new "game"
 
@@ -53,14 +53,13 @@ int main() {
 
         } else { // step 1. reading list of legal words
             if ((strlen(input_str)) != k) {
-                printf("the word as too many/few characters \n");
+                printf("Parola troppo lunga/corta \n");
             } else {
                 // Inserting each string in my hash table
                 ht_insert(table, input_str, val, init_hash_size, k);
             }
         }
     }
-    printf("exited");
     return 0;
 }
 
