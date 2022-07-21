@@ -14,79 +14,63 @@ typedef struct {
     int count;
 } HashTable;
 
-//ab
-HashTable *create_table(int size);
+
+typedef struct Ht_item Ht_item;
+
+HashTable* create_table(int size);
 
 int get_index(unsigned char *str, int size);
 
 unsigned long hash(unsigned char *str);
 
-ht_item* create_item(char *key, char value);
+ht_item* create_item(char *key, char *value, int k);
 
-void ht_insert(HashTable* table, char* key, char* value);
+void ht_insert(HashTable* table, char* key, char* value, int size, int k);
 
 
 int main() {
-    int k;
-    scanf("%d ", &k);
-    unsigned char input_str[k];
-    int value_index;
-    int init_hash_size = 50;
+    int k=5;
 
-    HashTable table = *create_table(init_hash_size);
+    char input_str[k];
+    int init_hash_size = 50;
+    char val[] = "0";
+
+    HashTable* table = create_table(init_hash_size);
 
     while (1) {
+        printf("inserisci parole ammissibili \n");
         fgets(input_str, 1000, stdin);
+        printf("%s\n", input_str);
         input_str[strlen(input_str) - 1] = '\0'; // removing \n at the end
 
-        printf("%s\n", input_str);
+
         // starting new "game"
+
         if (strcmp(input_str, "+nuova_partita") == 0) {
             // step 2.
-
             printf("%s", "starting nuova partita");
             break;
-        } else {
-            // Create the item
-            ht_item* item = create_item(input_str, '0');
-            int index = get_index(input_str, init_hash_size);
 
-            HashTable* table = create_table(init_hash_size);
-
-            ht_item* current_item = table->items[index];
-            if (current_item == NULL) {
-                // Key does not exist.
-                if (table->count == table->size) {
-                    // Hash Table Full
-                    printf("Insert Error: Hash Table is full\n");               /*devo capire quando metto piu di 50 parole ammissibili mannaggia*/
-                    return;
-                }
-
-                // Insert directly
-                table->items[index] = item;
-                table->count++;
+        } else { // step 1. reading list of legal words
+            if ((strlen(input_str)) != k) {
+                printf("the word as too many/few characters \n");
+            } else {
+                // Inserting each string in my hash table
+                ht_insert(table, input_str, val, init_hash_size, k);
             }
-
-
-
-
-            ht_item *item = create_item(input_str, '0');
-
-            // step 1. reading list of legal words
-            
         }
     }
-
     printf("exited");
     return 0;
 }
 
+
 //creates hash item
-ht_item *create_item(char *key, char *value) {  //ritorna il puntatore all'item che ho creato
+ht_item *create_item(char *key, char *value, int k) {  //ritorna il puntatore all'item che ho creato
     // Creates a pointer to a new hash table item
-    ht_item *item = malloc(sizeof(ht_item));
-    item->key = malloc(strlen(key) + 1);
-    item->value = malloc(strlen(value) + 1);
+    ht_item *item = (ht_item *) malloc(sizeof(ht_item));
+    item->key = (char*) malloc(k);
+    item->value = (char*) malloc(k);
     strcpy(item->key, key);
     strcpy(item->value, value);
     return item;
@@ -131,4 +115,20 @@ unsigned long hash(unsigned char *str) {
     return hash;
 }
 
+void ht_insert(HashTable* table, char* key, char* value, int size, int k){
+    ht_item* item = create_item(key, value,k);        //create an item
+    int index = get_index(key, size);          //apply hash function
 
+    ht_item* current_item = table->items[index];
+    if (current_item == NULL) {
+        // Key does not exist.
+        if (table->count == table->size) {
+            // Hash Table Full
+            printf("Insert Error: Hash Table is full\n");               /*devo capire quando metto piu di 50 parole ammissibili mannaggia*/
+            return;
+        }
+        // Insert directly
+        table->items[index] = item;
+        table->count++;
+    }
+}
