@@ -29,31 +29,40 @@ int get_index(unsigned char *str, int size);
 
 unsigned long hash(unsigned char *str);
 
-ht_item* create_item(char *key, char *value, int k);
+ht_item* create_item(char *key, char *value, long int k);
 
-void ht_insert(HashTable* table, char* key, char* value, int size, int k);
+void ht_insert(HashTable* table, char* key, char* value, int size, long int k);
 
-void resize(int size, HashTable* table, int k );
+void resize(int size, HashTable* table, long int k );
 
 void handle_collision(HashTable* table, unsigned long index, ht_item* item);
 
 void print_table(HashTable* table);
 
-HashTable* ref_into_hash(char* str, int k);
+HashTable* ref_into_hash(char* str, long int k);
 
-int ref_into_hash_index (int char_to_int_letter, unsigned long k);
+int ref_into_hash_index (int char_to_int_letter, long int k);
+
+char* compare (const char* ref, const char* p, long int k, HashTable* table);
+
+int ht_admitted_search(HashTable* table, char* key, int size);
+
+int ht_ref_search (HashTable* table, char key, long int k);
 
 int main() {
     long int k;
-    char c[1]; //I need it for fgets
+    char c[2]; //I need it for fgets
     char *ptr; //This is the reference to an object of type char*, whose value is set by the function to the next character in str after the numerical value.
-    printf("inserici la lunghezza delle parole");
+    printf("inserici la lunghezza delle parole: ");
     fgets (c, 4, stdin);
+    printf("%s", c);
     k = strtol(c, &ptr, 10);
+    printf("%ld ciao\n", k);
     char input_str[k];
     int init_hash_size = 53;
     char val[] = "0";
-    char ref[k];
+    char ref[k], p[k];
+    char* out;
     long int n;
     HashTable* ref_table;
 
@@ -90,12 +99,28 @@ int main() {
     fgets (c, 4, stdin);
     n = strtol(c, &ptr, 10);
 
+    for (int i = 0; i < n; i++) {
+        fgets(p, k+2, stdin);
+        p[strlen(p) - 1] = '\0';
+        int ok = ht_admitted_search(table, p, init_hash_size);
+        printf("%d", ok);
+        if (ok == 0) {
+            printf("not_exists \n");
+        }
+        if (ok ==1){
+            printf("siamo nell'else");
+            out = compare (ref, p, k, ref_table);
+            printf("%s end \n", out);
+        }
+
+    }
+
     return 0;
 }
 
 
 //creates hash item
-ht_item *create_item(char *key, char *value, int k) {  //ritorna il puntatore all'item che ho creato
+ht_item *create_item(char *key, char *value, long int k) {  //ritorna il puntatore all'item che ho creato
     // Creates a pointer to a new hash table item
     ht_item *item = (ht_item *) malloc(sizeof(ht_item));
     item->key = (char*) malloc(k);
@@ -131,7 +156,7 @@ unsigned long hash(unsigned char *str) {
     return hash;
 }
 
-void ht_insert(HashTable* table, char* key, char* value, int size, int k){
+void ht_insert(HashTable* table, char* key, char* value, int size, long int k){
     ht_item* item = create_item(key, value, k);        //create an item
     int index = get_index(key, size);          //apply hash function
 
@@ -162,7 +187,7 @@ void ht_insert(HashTable* table, char* key, char* value, int size, int k){
     }
 }
 
-void resize(int size, HashTable* table, int k ) {
+void resize(int size, HashTable* table, long int k ) {
 
     int oldTableSize = size;
     HashTable* new_table;
@@ -331,7 +356,7 @@ void print_table(HashTable* table) {
     printf("-------------------\n\n");
 }
 
-HashTable* ref_into_hash(char* str, int k){
+HashTable* ref_into_hash(char* str, long int k){
     int index, x;
     char val[] = "1";
 
@@ -354,24 +379,24 @@ HashTable* ref_into_hash(char* str, int k){
             // key exists: we only need to update value
                 int value = (*(table->items[index]->value) - '0') + 1;
                 printf("%d", value);
-                sprintf(table->items[index]->value, "%d", value);
+                sprintf(table->items[index]->value, "%d", value); //converting int into char*
                 printf("%s", table->items[index]->value);
         }
     }
     return table;
 }
 
-int ref_into_hash_index (int char_to_int_letter, unsigned long k){
+int ref_into_hash_index (int char_to_int_letter, long int k){
     int index;
 
-        if (char_to_int_letter <= 90 && char_to_int_letter>=65){
+        if (char_to_int_letter>=65 && char_to_int_letter <= 90 ){
             index = char_to_int_letter % 65;
         }
-        if (char_to_int_letter <= 57 && char_to_int_letter>=48){
+        if (char_to_int_letter>=48 && char_to_int_letter <= 57){
             index = char_to_int_letter + 5;
         }
-        if (char_to_int_letter <= 122 && char_to_int_letter>=97){
-            index = char_to_int_letter % 70;
+        if (char_to_int_letter>=97 && char_to_int_letter <= 122){
+            index = char_to_int_letter - 70;
         }
         if (char_to_int_letter == 95){
             index = 26;
@@ -380,4 +405,60 @@ int ref_into_hash_index (int char_to_int_letter, unsigned long k){
             index = 63;
         }
         return index;
+}
+
+int ht_admitted_search(HashTable* table, char* key, int size) {
+    // Searches the key in the hashtable and returns 1 if it exists, 0 otherwise
+    int index = get_index (key, size);
+    ht_item* item = table->items[index];
+
+    if (item != NULL) {
+        if (strcmp(item->key, key) == 0)
+            return 1;
+    }
+    return 0;
+}
+
+int ht_ref_search (HashTable* table, char key, long int k){
+    int x = key;
+    int index = ref_into_hash_index(x,k);
+    ht_item* item = table->items[index];
+
+    if (item != NULL) {
+        if (strcmp(item->key, key) == 0)
+            return 1;
+    }
+    return 0;
+
+}
+
+char* compare (const char* ref, const char* p, long int k, HashTable* table){
+    char out[k];
+    int count=0;
+    for (int i = 0; i < k; i++) {
+        if (ref[i]==p[i]){
+           out[i]='+';
+           count++;
+        }
+    }
+
+    printf("%d", count);
+
+    if (count==k){
+        printf("ok");
+        return out;
+    }
+    for (int i = 0; i < k; i++) {
+        if (ht_ref_search(table, p[i], k) == 1 && table->items[i]->value>0){
+            out[i]= '|';
+            int value = (*(table->items[i]->value) - '0') - 1;
+            sprintf(table->items[i]->value, "%d", value);
+        }
+
+        else {
+            out[i]= '/';
+        }
+    }
+
+    return out;
 }
