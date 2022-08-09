@@ -4,7 +4,7 @@
 
 typedef struct { // Define the Hash Table Item here
     char *key;
-    char *value;
+    int value;
 } ht_item;
 
 typedef struct LinkedList LinkedList;
@@ -29,9 +29,9 @@ int get_index(unsigned char *str, int size);
 
 unsigned long hash(unsigned char *str);
 
-ht_item* create_item(char *key, char *value, long int k);
+ht_item* create_item(char *key, int value, long int k);
 
-void ht_insert(HashTable* table, char* key, char* value, int size, long int k);
+void ht_insert(HashTable* table, char* key, int value, int size, long int k);
 
 void resize(int size, HashTable* table, long int k );
 
@@ -41,7 +41,7 @@ void print_table(HashTable* table);
 
 HashTable* ref_into_hash(char* str, long int k);
 
-int ref_into_hash_index (int char_to_int_letter, long int k);
+int ref_into_hash_index (int char_to_int_letter);
 
 char* compare (const char* ref, const char* p, long int k, HashTable* table);
 
@@ -49,18 +49,18 @@ int ht_admitted_search(HashTable* table, char* key, int size);
 
 int ht_ref_search (HashTable* table, char key, long int k);
 
+ht_item* ht_get_item (HashTable* table, char key, long int k);
+
 int main() {
     long int k;
-    char c[2]; //I need it for fgets
+    char c[2];//I need it for fgets
+    char d[2];
     char *ptr; //This is the reference to an object of type char*, whose value is set by the function to the next character in str after the numerical value.
     printf("inserici la lunghezza delle parole: ");
     fgets (c, 4, stdin);
-    printf("%s", c);
     k = strtol(c, &ptr, 10);
-    printf("%ld ciao\n", k);
     char input_str[k];
     int init_hash_size = 53;
-    char val[] = "0";
     char ref[k], p[k];
     char* out;
     long int n;
@@ -84,7 +84,7 @@ int main() {
                 printf("Parola troppo lunga/corta \n");
             } else {
                 // Inserting each string in my hash table
-                ht_insert(table, input_str, val, init_hash_size, k);
+                ht_insert(table, input_str, 0, init_hash_size, k);
             }
         }
     }
@@ -96,8 +96,8 @@ int main() {
     ref_table = ref_into_hash(ref, k);
 
     printf("inserisci numero massimo di parole da confrontare: ");
-    fgets (c, 4, stdin);
-    n = strtol(c, &ptr, 10);
+    fgets (d, 4, stdin);
+    n = strtol(d, &ptr, 10);
 
     for (int i = 0; i < n; i++) {
         fgets(p, k+2, stdin);
@@ -120,13 +120,12 @@ int main() {
 
 
 //creates hash item
-ht_item *create_item(char *key, char *value, long int k) {  //ritorna il puntatore all'item che ho creato
+ht_item *create_item(char *key, int value, long int k) {  //ritorna il puntatore all'item che ho creato
     // Creates a pointer to a new hash table item
     ht_item *item = (ht_item *) malloc(sizeof(ht_item));
     item->key = (char*) malloc(k);
-    item->value = (char*) malloc(k);
     strcpy(item->key, key);
-    strcpy(item->value, value);
+    item->value = value;
     return item;
 }
 
@@ -156,7 +155,7 @@ unsigned long hash(unsigned char *str) {
     return hash;
 }
 
-void ht_insert(HashTable* table, char* key, char* value, int size, long int k){
+void ht_insert(HashTable* table, char* key, int value, int size, long int k){
     ht_item* item = create_item(key, value, k);        //create an item
     int index = get_index(key, size);          //apply hash function
 
@@ -175,7 +174,7 @@ void ht_insert(HashTable* table, char* key, char* value, int size, long int k){
     else {
         // Scenario 1: We only need to update value
         if (strcmp(current_item->key, key) == 0) {
-            strcpy(table->items[index]->value, value);
+            table->items[index]->value = value;
             return;
         }
         else {
@@ -261,7 +260,6 @@ static ht_item* linkedlist_remove(LinkedList* list) {
     ht_item* it = NULL;
     memcpy(temp->item, it, sizeof(ht_item));
     free(temp->item ->key);
-    free(temp->item->value);
     free(temp->item);
     free(temp);
     return it;
@@ -273,7 +271,6 @@ static void free_linkedlist(LinkedList* list) {
         temp = list;
         list = list->next;
         free(temp->item->key);
-        free(temp->item->value);
         free(temp->item);
         free(temp);
     }
@@ -311,7 +308,6 @@ HashTable *create_table(int size) {
 void free_item(ht_item* item) {
     // Frees an item
     free(item->key);
-    free(item->value);
     free(item);
 }
 
@@ -350,7 +346,7 @@ void print_table(HashTable* table) {
     printf("\nHash Table\n-------------------\n");
     for (int i=0; i<table->size; i++) {
         if (table->items[i]) {
-            printf("Index:%d, Key:%s, Value:%s\n", i, table->items[i]->key, table->items[i]->value);
+            printf("Index:%d, Key:%s, Value:%d\n", i, table->items[i]->key, table->items[i]->value);
         }
     }
     printf("-------------------\n\n");
@@ -377,16 +373,13 @@ HashTable* ref_into_hash(char* str, long int k){
         }
         else {
             // key exists: we only need to update value
-                int value = (*(table->items[index]->value) - '0') + 1;
-                printf("%d", value);
-                sprintf(table->items[index]->value, "%d", value); //converting int into char*
-                printf("%s", table->items[index]->value);
+            table->items[index]->value++;
         }
     }
     return table;
 }
 
-int ref_into_hash_index (int char_to_int_letter, long int k){
+int ref_into_hash_index (int char_to_int_letter){
     int index;
 
         if (char_to_int_letter>=65 && char_to_int_letter <= 90 ){
@@ -432,13 +425,19 @@ int ht_ref_search (HashTable* table, char key, long int k){
 
 }
 
-char* compare (const char* ref, const char* p, long int k, HashTable* table){
-    char out[k];
+char* compare (const char* ref, const char* p, long int k, HashTable* table, int init_hash_size){
+    char out[k+1];
+    out[k]='\0';
     int count=0;
+
+    HashTable* working_table = copy_table(init_hash_size, k, ref);
+
     for (int i = 0; i < k; i++) {
         if (ref[i]==p[i]){
+           ht_item* item = ht_get_item (working_table, p[i], k);
            out[i]='+';
            count++;
+           item->value--;
         }
     }
 
@@ -449,16 +448,33 @@ char* compare (const char* ref, const char* p, long int k, HashTable* table){
         return out;
     }
     for (int i = 0; i < k; i++) {
-        if (ht_ref_search(table, p[i], k) == 1 && table->items[i]->value>0){
-            out[i]= '|';
-            int value = (*(table->items[i]->value) - '0') - 1;
-            sprintf(table->items[i]->value, "%d", value);
-        }
-
-        else {
-            out[i]= '/';
+        if (ref[i]!=p[i]) {
+            if (ht_ref_search(table, p[i], k) == 1 ) {
+                if (table->items[i]->value > 0) {
+                    out[i] = '|';
+                    table->items[i]->value--;
+                }
+                else{
+                    out[i]='/';
+                }
+            } else {
+                out[i] = '/';
+            }
         }
     }
 
     return out;
 }
+
+ht_item* ht_get_item (HashTable* table, char key, long int k){
+    int x= key;
+    int index = ref_into_hash_index(x);
+    ht_item* item = table->items[index];
+
+        // Ensure that we move to a non NULL item
+    if (item != NULL) {
+            if (item->key[0] == key)
+                return item;
+    }
+        return NULL;
+    }
