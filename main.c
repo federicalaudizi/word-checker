@@ -22,7 +22,7 @@ typedef struct {
     int count;
 } HashTable;
 
-void new_round (HashTable* table, long int k, int init_hash_size, char* ref);
+void new_round (HashTable* table, long int k, int init_hash_size);
 
 HashTable *create_table(int size);
 
@@ -65,8 +65,7 @@ int main() {
     k = strtol(c, &ptr, 10);
     char input_str[k];
     int init_hash_size = 53;
-    HashTable *ref_table;
-    char ref[k];
+
 
     HashTable *table = create_table(init_hash_size);
 
@@ -78,9 +77,7 @@ int main() {
 
         if (strcmp(input_str, "+nuova_partita") == 0) {
             // step 2.
-            fgets(ref, k+2, stdin);
-            ref[k]='\0';
-            new_round(table, k, init_hash_size, ref);
+            new_round(table, k, init_hash_size);
             break;
 
         } else { // step 1. reading list of legal words
@@ -89,7 +86,6 @@ int main() {
             }
 
     }
-    print_table(table);
 
     return 0;
 }
@@ -274,7 +270,7 @@ HashTable *create_table(int size) {
     table->items = calloc(table->size, sizeof(ht_item *));
     for (int i = 0; i < table->size; i++) //sets all it’s items to NULL (Since they aren’t used)
         table->items[i] = NULL;
-    table->overflow_buckets = create_overflow_buckets(table);
+    table->overflow_buckets = create_overflow_buckets(table); //todo nella hashtable di ref non ci sono collisioni, ottimizza
     return table;
 }
 
@@ -458,14 +454,15 @@ void init_insert(HashTable *table, int init_hash_size, long int k) {
     }
 }
 
-void new_round (HashTable* table, long int k, int init_hash_size, char* ref){
+void new_round (HashTable* table, long int k, int init_hash_size){
     char p[k+1];
     char* out;
+    char ref[k];
 
-    HashTable* ref_table= ref_into_hash(ref, k);
-    printf("1");
-    print_table(ref_table);
+    fgets(ref, k+2, stdin);
+    ref[k]='\0';
 
+    HashTable*  ref_table = ref_into_hash(ref, k);
 
     char n_max[2];
     char* ptr;
@@ -479,15 +476,12 @@ void new_round (HashTable* table, long int k, int init_hash_size, char* ref){
 
     HashTable* working_table = ref_into_hash(ref, k);
 
-    printf("2");
-    print_table(ref_table);
 
     while (i<n){
         fgets(p, 1000, stdin);
 
         if (strcmp(p, "+inserisci_inizio\n") == 0) {
             init_insert(table, init_hash_size, k);
-            print_table(table);
         }
         else if (strcmp(p, "+stampa_filtrate\n") == 0) {
             //todo filtrate
@@ -495,19 +489,17 @@ void new_round (HashTable* table, long int k, int init_hash_size, char* ref){
         else {
             p[k]='\0';
             bool = ht_admitted_search(table, p, init_hash_size);
-            printf("3");
-            print_table(ref_table);
+
             if (bool == 0) {
                 printf("not exists \n");
             } else {
                 out = compare(ref, p, k, working_table);
                 printf("%s \n", out);
-                printf("4");
-                print_table(ref_table);
-                for (int j = 0; j < 64; j++) {
-                    ht_item* item = ref_table->items[j];
-                    working_table->items[j]->value = item->value;
-                    }
+
+                //for (int j = 0; j < 64; j++) {
+                //working_table->items[j]->value = ref_table->items[j]->value;
+                 //   }
+                working_table = ref_into_hash(ref, k);
                 }
                 i++;
             }
