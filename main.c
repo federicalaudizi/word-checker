@@ -22,7 +22,7 @@ typedef struct {
     int count;
 } HashTable;
 
-void new_round (HashTable* table, long int k, int init_hash_size);
+void new_round(HashTable *table, long int k, int init_hash_size);
 
 HashTable *create_table(int size);
 
@@ -44,7 +44,7 @@ HashTable *ref_into_hash(const char *str, long int k);
 
 int ref_into_hash_index(int char_to_int_letter);
 
-char* compare(const char *ref, const char *p, long int k, HashTable *working_table);
+char *compare(const char *ref, const char *p, long int k, HashTable *working_table);
 
 int ht_admitted_search(HashTable *table, char *key, int size);
 
@@ -57,6 +57,7 @@ void new_game(HashTable *table, long int k, int init_hash_size);
 void init_insert(HashTable *table, int init_hash_size, long int k);
 
 int main() {
+    freopen("output.txt", "w+", stdout);
     long int k;
     char *ptr;
     char c[2];//I need it for fgets
@@ -81,9 +82,9 @@ int main() {
             break;
 
         } else { // step 1. reading list of legal words
-                // Inserting each string in my hash table
-                ht_insert(table, input_str, 0, init_hash_size, k);
-            }
+            // Inserting each string in my hash table
+            ht_insert(table, input_str, 0, init_hash_size, k);
+        }
 
     }
 
@@ -270,7 +271,8 @@ HashTable *create_table(int size) {
     table->items = calloc(table->size, sizeof(ht_item *));
     for (int i = 0; i < table->size; i++) //sets all it’s items to NULL (Since they aren’t used)
         table->items[i] = NULL;
-    table->overflow_buckets = create_overflow_buckets(table); //todo nella hashtable di ref non ci sono collisioni, ottimizza
+    table->overflow_buckets = create_overflow_buckets(
+            table); //todo nella hashtable di ref non ci sono collisioni, ottimizza
     return table;
 }
 
@@ -338,8 +340,9 @@ HashTable *ref_into_hash(const char *str, long int k) {
         x = str[i];
         index = ref_into_hash_index(x);
 
-        char c = str[i];
-        char *key = &c;
+
+        char key[2] = "\0";
+        key[0] = str[i];
         ht_item *item = create_item(key, 1, k);
         ht_item *current_item = table->items[index];
         if (current_item == NULL) {
@@ -358,16 +361,21 @@ HashTable *ref_into_hash(const char *str, long int k) {
 int ref_into_hash_index(int char_to_int_letter) {
     int index;
 
+    //lettere maiuscole
     if (char_to_int_letter >= 65 && char_to_int_letter <= 90) {
         index = char_to_int_letter % 65;
     }
-    if (char_to_int_letter >= 48 && char_to_int_letter <= 57) {
+
+    //numeri
+    else if (char_to_int_letter >= 48 && char_to_int_letter <= 57) {
         index = char_to_int_letter + 5;
     }
-    if (char_to_int_letter >= 97 && char_to_int_letter <= 122) {
+
+    //lettere minuscole
+    else if (char_to_int_letter >= 97 && char_to_int_letter <= 122) {
         index = char_to_int_letter - 70;
     }
-    if (char_to_int_letter == 95) {
+    else if (char_to_int_letter == 95) {
         index = 26;
     }
     if (char_to_int_letter == 45) {
@@ -394,7 +402,7 @@ int ht_admitted_search(HashTable *table, char *key, int size) {
     return 0;
 }
 
-char* compare(const char *ref, const char *p, long int k, HashTable *working_table) {
+char *compare(const char *ref, const char *p, long int k, HashTable *working_table) {
     char out[k + 1];
     out[k] = '\0';
     int count = 0;
@@ -409,8 +417,8 @@ char* compare(const char *ref, const char *p, long int k, HashTable *working_tab
     }
 
     if (count == k) {
-        printf("ok");
-        return out;
+        char ok[3]="ok";
+        return ok;
     }
     for (int i = 0; i < k; i++) {
         if (ref[i] != p[i]) {
@@ -447,47 +455,46 @@ void init_insert(HashTable *table, int init_hash_size, long int k) {
     char p[k];
     fgets(p, 1000, stdin);
     p[strlen(p) - 1] = '\0';
-    while (strcmp(p, "+inserisci_fine") != 0){
+    while (strcmp(p, "+inserisci_fine") != 0) {
         ht_insert(table, p, 0, init_hash_size, k);
         fgets(p, 1000, stdin);
         p[strlen(p) - 1] = '\0';
     }
 }
 
-void new_round (HashTable* table, long int k, int init_hash_size){
-    char p[k+1];
-    char* out;
+void new_round(HashTable *table, long int k, int init_hash_size) {
+    char p[k + 1];
+    char *out;
     char ref[k];
 
-    fgets(ref, k+2, stdin);
-    ref[k]='\0';
+    fgets(ref, k + 2, stdin);
+    ref[k] = '\0';
 
-    HashTable*  ref_table = ref_into_hash(ref, k);
+    HashTable *ref_table = ref_into_hash(ref, k);
 
-    char n_max[2];
-    char* ptr;
+    char n_max[10];
+    char *ptr;
+    char* result;
     long int n;
     fgets(n_max, 3, stdin);
-    n_max[(strlen(n_max)-1)] ='\0';
+    n_max[(strlen(n_max) - 1)] = '\0';
     n = strtol(n_max, &ptr, 10);
 
-    int i=0;
+    int i = 0;
     int bool;
 
-    HashTable* working_table = ref_into_hash(ref, k);
+    HashTable *working_table = ref_into_hash(ref, k);
 
 
-    while (i<n){
+    while (i < n) {
         fgets(p, 1000, stdin);
 
         if (strcmp(p, "+inserisci_inizio\n") == 0) {
             init_insert(table, init_hash_size, k);
-        }
-        else if (strcmp(p, "+stampa_filtrate\n") == 0) {
+        } else if (strcmp(p, "+stampa_filtrate\n") == 0) {
             //todo filtrate
-        }
-        else {
-            p[k]='\0';
+        } else {
+            p[k] = '\0';
             bool = ht_admitted_search(table, p, init_hash_size);
 
             if (bool == 0) {
@@ -495,14 +502,31 @@ void new_round (HashTable* table, long int k, int init_hash_size){
             } else {
                 out = compare(ref, p, k, working_table);
                 printf("%s \n", out);
+                if (strcmp(out, "ok")==0){
+                    break;
+                }
 
-                //for (int j = 0; j < 64; j++) {
-                //working_table->items[j]->value = ref_table->items[j]->value;
-                 //   }
-                working_table = ref_into_hash(ref, k);
+                for (int j = 0; j < 64; j++) {
+                    if (ref_table->items[j] != NULL) {
+                        working_table->items[j]->value = ref_table->items[j]->value;
+                    }
                 }
                 i++;
             }
         }
     }
+    if (i==n){
+        printf("ko \n");
+        for (int j = 0; j < 2; j++) {
+            fgets(p, 1000, stdin);
+            p[strlen(p)-1]='\0';
+            if (strcmp(p, "+inserisci_inizio") == 0) {
+                init_insert(table, init_hash_size, k);
+            }
+            else if (strcmp(p, "+nuova_partita") == 0){
+                new_round(table, k, init_hash_size);
+            }
+        }
+    }
+}
 
