@@ -23,7 +23,11 @@ typedef struct {
     int visited; //0 if the element was visited 1 otherwise
 } HashTable;
 
-int sec_constraint(const char *str, int i, HashTable *admitted_table, int init_hash_size);
+void trd_constraint(const char *ref, int i, HashTable *table, int size, HashTable *new_table);
+
+void sec_constraint1(const char *ref, const char *out, HashTable *admitted_table, int init_hash_size, HashTable *new_table);
+
+void sec_constraint(const char *ref, const char *out, HashTable *admitted_table, int init_hash_size, HashTable *new_table);
 
 //void ht_delete(HashTable *table, int index, ht_item *item);
 
@@ -49,7 +53,8 @@ HashTable *ref_into_hash(const char *str, long int k);
 
 int ref_into_hash_index(int char_to_int_letter);
 
-char *compare(const char *ref, const char *p, long int k, HashTable *working_table, HashTable* table);
+HashTable *
+compare(const char *ref, const char *p, long int k, HashTable *working_table, HashTable *table, HashTable *new_table);
 
 int ht_admitted_search(HashTable *table, char *key, int size);
 
@@ -69,7 +74,7 @@ int main() {
     int init_hash_size = 53;
 
     HashTable *table = create_table(init_hash_size);
-    table->count=0;
+    table->count = 0;
 
     while (1) {
         fgets(input_str, 1000, stdin);
@@ -403,11 +408,13 @@ int ht_admitted_search(HashTable *table, char *key, int size) {
     return 0;
 }
 
-char *compare(const char *ref, const char *p, long int k, HashTable *working_table, HashTable* table) {
-    char out[k + 1];
+HashTable *compare(const char *ref, const char *p, long int k, HashTable *working_table, HashTable *table, HashTable *new_table) {
+    char out[k+1];
+    for (int i = 0; i < k; ++i) {
+        out[i]='0';
+    }
     out[k] = '\0';
     int count = 0;
-    int filtered=0;
 
     for (int i = 0; i < k; i++) {
         if (ref[i] == p[i]) {
@@ -415,14 +422,19 @@ char *compare(const char *ref, const char *p, long int k, HashTable *working_tab
             out[i] = '+';
             count++;
             item->value--;
-            filtered = sec_constraint(ref, i, table, table->size);
         }
-        printf("filtered: %d", filtered);
+    }
+    if (count > 0) {
+        if (new_table->count > 0) {
+            sec_constraint(ref, out, new_table, new_table->size, new_table);
+        } else {
+            sec_constraint1(ref, out, table, table->size, new_table);
+        }
     }
 
     if (count == k) {
-        char ok[3] = "ok";
-        return ok;
+        printf("ok");
+        return new_table;
     }
     for (int i = 0; i < k; i++) {
         if (ref[i] != p[i]) {
@@ -436,10 +448,19 @@ char *compare(const char *ref, const char *p, long int k, HashTable *working_tab
                 }
             } else {
                 out[i] = '/';
+                /*if (new_table->count > 0) {
+                    trd_constraint(p, i, new_table, table->size, new_table);
+                } else {
+                    trd_constraint(p, i, table, table->size, new_table);
+                }*/
+
             }
         }
     }
-    return out;
+
+    printf("%s \n", out);
+    printf("%d\n", new_table->count);
+    return new_table;
 }
 
 ht_item *ht_get_item(HashTable *table, char key, long int k) {
@@ -468,9 +489,11 @@ void init_insert(HashTable *table, int init_hash_size, long int k) {
 
 void new_round(HashTable *table, long int k, int init_hash_size) {
     char p[k + 1];
-    p[k]='\0';
+    p[k] = '\0';
     char *out;
     char ref[k];
+    HashTable *new_table = create_table(table->size);;
+    new_table->count = 0;
 
     fgets(ref, k + 2, stdin);
     ref[k] = '\0';
@@ -492,6 +515,8 @@ void new_round(HashTable *table, long int k, int init_hash_size) {
 
     while (i < n) {
         fgets(p, 1000, stdin);
+        if (feof(stdin))
+            break;
 
         if (strcmp(p, "+inserisci_inizio") == 0) {
             init_insert(table, init_hash_size, k);
@@ -499,18 +524,17 @@ void new_round(HashTable *table, long int k, int init_hash_size) {
             //todo filtrate
         } else {
             p[k] = '\0';
-            bool = ht_admitted_search(table, p, init_hash_size);
+            if (new_table->count == 0) {
+                bool = ht_admitted_search(table, p, init_hash_size);
+            } else {
+                bool = ht_admitted_search(new_table, p, init_hash_size);
+            }
 
             if (bool == 0) {
                 printf("not exists \n");
 
             } else {
-                out = compare(ref, p, k, working_table, table);
-
-                printf("%s \n", out);
-                if (strcmp(out, "ok") == 0) {
-                    break;
-                }
+                new_table = compare(ref, p, k, working_table, table, new_table);
 
                 for (int j = 0; j < 64; j++) {
                     if (ref_table->items[j] != NULL) {
@@ -523,6 +547,7 @@ void new_round(HashTable *table, long int k, int init_hash_size) {
 
         //todo admitted_table= new_table;
     }
+
     if (i == n) {
         printf("ko \n");
     }
@@ -533,14 +558,14 @@ void new_round(HashTable *table, long int k, int init_hash_size) {
             if (strcmp(p, "+inserisci_inizio") == 0) {
                 init_insert(table, init_hash_size, k);
             } else if (strcmp(p, "+nuova_partita") == 0) {
-                //free_table(new_table);
+                free_table(new_table);
                 new_round(table, k, init_hash_size);
             }
         }
     }
 }
 
-/*void ht_delete(HashTable *table, int index, ht_item *item) {
+void ht_delete(HashTable *table, int index, ht_item *item) {
     char *key = item->key;
     long int k = strlen(key);
     // Deletes an item from the table
@@ -567,44 +592,156 @@ void new_round(HashTable *table, long int k, int init_hash_size) {
         free_linkedlist(node);
         table->overflow_buckets[index] = head;
 
-        print_table(table);
     }
-    printf("il conto: %d \n", table->count);
-}*/
+}
 
-int sec_constraint(const char *ref, int i, HashTable *admitted_table, int init_hash_size) {
+void sec_constraint1(const char *ref, const char *out, HashTable *admitted_table, int init_hash_size, HashTable *new_table) {
     ht_item *item;
     LinkedList *head;
-    HashTable* new_table = create_table(admitted_table->count);
+    unsigned long k = strlen(out);
+    int i = 0;
+    int esc;
+
 
     for (int j = 0; j < init_hash_size; j++) {
         // Ensure that we move to items which are not NULL
         item = admitted_table->items[j];
         head = admitted_table->overflow_buckets[j];
+        if (item != NULL) {
+            if (head != NULL) {
+                while (item != NULL) {
+                    while (i < k) {
+                        if (out[i] == '+') {
+                            if (ref[i] == item->key[i]) {
+                                i++;
+                            } else{
+                                esc=1;
+                                break;
+                            }
+                        }else
+                            i++;
+                    }
+                    i=0;
+                    if (esc != 1){
+                        ht_insert(new_table, item->key, item->value, admitted_table->size, sizeof(ref));
+                    }
+                    esc=0;
+                    if (head == NULL) {
+                        break;
+                    } else {
+                        item = head->item;
+                        head = head->next;
+                    }
+
+                }
+            } else {
+                while (i < k) {
+                    if (out[i] == '+') {
+                        if (ref[i] == item->key[i]) {
+                            i++;
+                        } else{
+                            esc=1;
+                            break;
+                        }
+                    }else
+                        i++;
+                }
+                i=0;
+                if(esc!=1){
+                    ht_insert(new_table, item->key, item->value, admitted_table->size, sizeof(ref));
+                }
+                esc=0;
+            }
+        }
+    }
+}
+
+void sec_constraint(const char *ref, const char *out, HashTable *admitted_table, int init_hash_size, HashTable *new_table){
+    ht_item *item;
+    LinkedList *head;
+    unsigned long k = strlen(out);
+    int i = 0;
+
+    for (int j = 0; j < init_hash_size; j++) {
+        // Ensure that we move to items which are not NULL
+        item = admitted_table->items[j];
+        head = admitted_table->overflow_buckets[j];
+        if (item != NULL) {
+            if (head != NULL) {
+                while (item != NULL) {
+                    while (i < k) {
+                        if (out[i] == '+') {
+                            if (ref[i] == item->key[i]) {
+                                i++;
+                            } else{
+                                ht_delete(new_table, j, item);
+                                break;
+                            }
+                        }else
+                            i++;
+                    }
+                    i=0;
+                    if (head == NULL) {
+                        break;
+                    } else {
+                        item = head->item;
+                        head = head->next;
+                    }
+
+                }
+            } else {
+                while (i < k) {
+                    if (out[i] == '+') {
+                        if (ref[i] == item->key[i]) {
+                            i++;
+                        } else{
+                            ht_delete(new_table, j, item);
+                            break;
+                        }
+                    }else
+                        i++;
+                }
+                i=0;
+            }
+        }
+    }
+}
+
+/*void trd_constraint(const char *ref, int i, HashTable *table, int size, HashTable *new_table) {
+    ht_item *item;
+    LinkedList *head;
+    for (int j = 0; j < size; j++) {
+        // Ensure that we move to items which are not NULL
+        item = table->items[j];
+        head = table->overflow_buckets[j];
 
         if (item != NULL) {
             if (head != NULL) {
-                while (item != NULL ) {
-                    if (ref[i] == item->key[i]) {
-                        ht_insert(new_table, item->key, item->value, admitted_table->count,sizeof(ref));
-                        // ht_delete(admitted_table, j, item);
+                while (item != NULL) {
+                    if (ref[i] != item->key[i]) {
+                        if (ht_admitted_search(new_table, item->key, new_table->size) == 1) {
+                            ht_delete(new_table, j, item);
+                        } else {
+                            ht_insert(new_table, item->key, item->value, table->size, sizeof(ref));
+                        }
                     }
-                    if (head==NULL){
+                    if (head == NULL) {
                         break;
-                    }else {
+                    } else {
                         item = head->item;
                         head = head->next;
                     }
                 }
             } else {
-                if (ref[i] == item->key[i]) {
-                    ht_insert(new_table, item->key, item->value, admitted_table->count,sizeof(ref));
+                if (ref[i] != item->key[i]) {
+                    if (ht_admitted_search(new_table, item->key, new_table->size) == 1) {
+                        ht_delete(new_table, j, item);
+                    } else
+                        ht_insert(new_table, item->key, item->value, table->size, sizeof(ref));
                 }
             }
         }
-
+        print_table(new_table);
     }
-
-    return new_table->count;
 }
-
+*/
