@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-int bool=0;
+int ric = 0;
 
 typedef struct { // Define the Hash Table Item here
     char *key;
@@ -24,7 +24,8 @@ typedef struct {
     int count;
 } HashTable;
 
-void first_constraints (char* out, const char* ref, const char* p, HashTable* table, HashTable* new_table);
+void first_constraints(char *out, const char *ref, const char *p, HashTable *table, HashTable *new_table,
+                       HashTable *ref_table, HashTable *working_table);
 
 void ht_delete(HashTable *table, int index, ht_item *item);
 
@@ -50,7 +51,9 @@ HashTable *ref_into_hash(const char *str, long int k);
 
 int ref_into_hash_index(int char_to_int_letter);
 
-HashTable* compare(const char *ref, const char *p, long int k, HashTable *working_table, HashTable *table, HashTable *new_table);
+HashTable *
+compare(const char *ref, const char *p, long int k, HashTable *working_table, HashTable *table, HashTable *new_table,
+        HashTable *ref_table);
 
 int ht_admitted_search(HashTable *table, char *key);
 
@@ -93,7 +96,6 @@ int main() {
     }
     return 0;
 }
-
 
 ht_item *create_item(char *key, int value, long int k) {  //ritorna il puntatore all'item che ho creato
     // Creates a pointer to a new hash table item
@@ -280,7 +282,6 @@ void free_table(HashTable *table) {
         if (item != NULL)
             free_item(item);
     }
-
     free_overflow_buckets(table);
     free(table->items);
     free(table);
@@ -301,7 +302,6 @@ void handle_collision(HashTable *table, unsigned long index, ht_item *item) {
         return;
     }
 }
-
 
 void print_table(HashTable *table) {
     printf("\n-------------------\n");
@@ -387,7 +387,9 @@ int ht_admitted_search(HashTable *table, char *key) {
     return 0;
 }
 
-HashTable* compare(const char *ref, const char *p, long int k, HashTable *working_table, HashTable *table, HashTable *new_table) {
+HashTable *
+compare(const char *ref, const char *p, long int k, HashTable *working_table, HashTable *table, HashTable *new_table,
+        HashTable *ref_table) {
     char out[k + 1];
     for (int i = 0; i < k; ++i) {
         out[i] = '0';
@@ -415,7 +417,7 @@ HashTable* compare(const char *ref, const char *p, long int k, HashTable *workin
                 if (item->value > 0) {
                     out[i] = '|';
                     item->value--;
-                    if (item->value == 0){
+                    if (item->value == 0) {
                         //todo vincolo 5
                     }
                 } else {
@@ -427,10 +429,10 @@ HashTable* compare(const char *ref, const char *p, long int k, HashTable *workin
         }
     }
 
-    first_constraints(out, ref, p, table, new_table);
+    first_constraints(out, ref, p, table, new_table, ref_table, working_table);
 
     printf("%s \n", out);
-    printf("%d THIS IS COUNT\n", new_table->count);
+    printf("%d \n", new_table->count);
     return new_table;
 }
 
@@ -489,23 +491,27 @@ void new_round(HashTable *table, long int k) {
         if (feof(stdin))
             break;
 
-        if (strcmp(p, "+inserisci_inizio") == 0) {
-            init_insert(table, k);
-        } else if (strcmp(p, "+stampa_filtrate") == 0) {
+        if (strcmp(p, "+inserisci_inizio\n") == 0) {
+            if (new_table->count >0){
+                init_insert(new_table, k);
+            }else{
+                init_insert(table, k);
+            }
+        } else if (strcmp(p, "+stampa_filtrate\n") == 0) {
             //todo filtrate
         } else {
             p[k] = '\0';
             if (new_table->count == 0) {
                 bool = ht_admitted_search(table, p);
             } else {
-                bool = ht_admitted_search(new_table, p);
+                bool = ht_admitted_search(table, p);
             }
 
             if (bool == 0) {
                 printf("not exists \n");
 
             } else {
-                new_table = compare(ref, p, k, working_table, table, new_table);
+                new_table = compare(ref, p, k, working_table, table, new_table, ref_table);
 
                 for (int j = 0; j < 64; j++) {
                     if (ref_table->items[j] != NULL) {
@@ -522,14 +528,16 @@ void new_round(HashTable *table, long int k) {
     if (i == n) {
         printf("ko \n");
     }
-    if (i == n || strcmp(out, "ok") == 0) {
+    if (i == n || strcmp(out, "ok") == 0) {  //out non è mai ok al max ++++++++
         for (int j = 0; j < 2; j++) {
             fgets(p, 1000, stdin);
             p[strlen(p) - 1] = '\0';
             if (strcmp(p, "+inserisci_inizio") == 0) {
-                init_insert(table,  k);
+                init_insert(table, k);
             } else if (strcmp(p, "+nuova_partita") == 0) {
+                ric=0;
                 free_table(new_table);
+                print_table(new_table);
                 new_round(table, k);
             }
         }
@@ -567,8 +575,7 @@ void ht_delete(HashTable *table, int index, ht_item *item) {
 }
 
 
-
-int word_search(HashTable *table, char key){ //se c'è ritorno 0
+int word_search(HashTable *table, char key) { //se c'è ritorno 0
     int x = key;
     int index = ref_into_hash_index(x);
     ht_item *item = table->items[index];
@@ -581,46 +588,128 @@ int word_search(HashTable *table, char key){ //se c'è ritorno 0
     return 1;
 }
 
-void first_constraints (char* out, const char* ref, const char* p, HashTable* table, HashTable* new_table) {
+void first_constraints(char *out, const char *ref, const char *p, HashTable *table, HashTable *new_table,
+                       HashTable *ref_table, HashTable *working_table) {
     unsigned long k = strlen(out);
-    int i=0, esc=0;
-    ht_item* item;
-    LinkedList* head;
+    int i = 0, esc = 0;
+    ht_item *item;
+    LinkedList *head;
+    int x, index;
+    HashTable *word_table;
 
     for (int j = 0; j < table->size; j++) {
         // Ensure that we move to items which are not NULL
-        item = table->items[j];
+        if (ric==0){
+            item = table->items[j];
+            head = table->overflow_buckets[j];
+        }else{
+            item = new_table->items[j];
+            head = table->overflow_buckets[j];
+        }
 
-        head = table->overflow_buckets[j];
 
         if (item != NULL) {
-            HashTable* word_table = ref_into_hash(table->items[j]->key, strlen(out));
+            word_table = ref_into_hash(item->key, strlen(out));
+
             if (head != NULL) {
                 while (item != NULL) {
-                    while (i<k){
-                        if(out[i]=='+'){
-                            if(item->key[i]==ref[i]){
-                                i++;
-                            }
-                            else{
-                                bool = 1;
-                                return;
-                            }
-                        } else if (out[i]=='*'){
-                            if(word_search(word_table, p[i])!=0){
-                                i++;
-                            } else{
-                                esc=1;
-                                break;
-                            }
-                        }else if (out[i]=='|'){
-                            if(item->key[i] != ref[i] == word_search(word_table, p[i])==0){
-                                i++;
-                            }else{
-                                esc=1;
-                                break;
-                            }
+                    word_table = ref_into_hash(item->key, strlen(out));
 
+                    while (i < k) {
+                        x = ref[i];
+                        index = ref_into_hash_index(x);
+                        if (word_search(word_table, ref_table->items[index]->key[0]) == 0) {
+                            if (working_table->items[index]->value == 0) {
+                                if (ref_table->items[index]->value == word_table->items[index]->value) {
+                                    if (out[i] == '+') {
+                                        if (item->key[i] == ref[i]) {
+                                            i++;
+                                        } else {
+                                            esc = 1;
+                                            break;
+                                        }
+                                    } else if (out[i] == '*') {
+                                        if (word_search(word_table, p[i]) != 0) {
+                                            i++;
+                                        } else {
+                                            esc = 1;
+                                            break;
+                                        }
+                                    } else if (out[i] == '|') {
+                                        if (item->key[i] != ref[i] && word_search(word_table, p[i]) == 0) {
+                                            i++;
+                                        } else {
+                                            esc = 1;
+                                            break;
+                                        }
+                                    }
+                                } else {
+                                    esc = 1;
+                                    break;
+                                }
+                            } else {
+                                if (ref_table->items[index]->value == working_table->items[index]->value) {
+                                    if (out[i] == '+') {
+                                        if (item->key[i] == ref[i]) {
+                                            i++;
+                                        } else {
+                                            esc = 1;
+                                            break;
+                                        }
+                                    } else if (out[i] == '*') {
+                                        if (word_search(word_table, p[i]) != 0) {
+                                            i++;
+                                        } else {
+                                            esc = 1;
+                                            break;
+                                        }
+                                    } else if (out[i] == '|') {
+                                        if (item->key[i] != ref[i] && word_search(word_table, p[i]) == 0) {
+                                            i++;
+                                        } else {
+                                            esc = 1;
+                                            break;
+                                        }
+                                    } else {
+                                        esc = 1;
+                                        break;
+                                    }
+                                } else {
+                                    esc = 1;
+                                    break;
+                                }
+                            }
+                        }else {
+                            if (working_table->items[index]->value == ref_table->items[index]->value) {
+                                if (out[i] == '+') {
+                                    if (item->key[i] == ref[i]) {
+                                        i++;
+                                    } else {
+                                        esc = 1;
+                                        break;
+                                    }
+                                } else if (out[i] == '*') {
+                                    if (word_search(word_table, p[i]) != 0) {
+                                        i++;
+                                    } else {
+                                        esc = 1;
+                                        break;
+                                    }
+                                } else if (out[i] == '|') {
+                                    if (item->key[i] != ref[i] && word_search(word_table, p[i]) == 0) {
+                                        i++;
+                                    } else {
+                                        esc = 1;
+                                        break;
+                                    }
+                                } else {
+                                    esc = 1;
+                                    break;
+                                }
+                            } else {
+                                esc = 1;
+                                break;
+                            }
                         }
                     }
                     if (head == NULL) {
@@ -630,45 +719,118 @@ void first_constraints (char* out, const char* ref, const char* p, HashTable* ta
                         head = head->next;
                     }
                 }
-                i=0;
+                i = 0;
             } else {
-                while (i<k){
-                    if(out[i]=='+'){
-                        if(item->key[i]==ref[i]){
-                            i++;
-                        }
-                        else{
-                            esc=1;
-                            break;
-                        }
-
-                    } else if (out[i]=='*'){
-                        if(word_search(word_table, p[i])!=0){
-                            i++;
+                while (i < k) {
+                    x = ref[i];
+                    index = ref_into_hash_index(x);
+                    if (word_search(word_table, ref_table->items[index]->key[0]) == 0) {
+                        if (working_table->items[index]->value == 0) {
+                            if (ref_table->items[index]->value == word_table->items[index]->value) {
+                                if (out[i] == '+') {
+                                    if (item->key[i] == ref[i]) {
+                                        i++;
+                                    } else {
+                                        esc = 1;
+                                        break;
+                                    }
+                                } else if (out[i] == '*') {
+                                    if (word_search(word_table, p[i]) != 0) {
+                                        i++;
+                                    } else {
+                                        esc = 1;
+                                        break;
+                                    }
+                                } else if (out[i] == '|') {
+                                    if (item->key[i] != ref[i] && word_search(word_table, p[i]) == 0) {
+                                        i++;
+                                    } else {
+                                        esc = 1;
+                                        break;
+                                    }
+                                }
+                            } else {
+                                esc = 1;
+                                break;
+                            }
                         } else {
-                            esc=1;
-                            break;
+                            if (ref_table->items[index]->value == working_table->items[index]->value) {
+                                if (out[i] == '+') {
+                                    if (item->key[i] == ref[i]) {
+                                        i++;
+                                    } else {
+                                        esc = 1;
+                                        break;
+                                    }
+                                } else if (out[i] == '*') {
+                                    if (word_search(word_table, p[i]) != 0) {
+                                        i++;
+                                    } else {
+                                        esc = 1;
+                                        break;
+                                    }
+                                } else if (out[i] == '|') {
+                                    if (item->key[i] != p[i] && word_search(word_table, p[i]) == 0) {
+                                        i++;
+                                    } else {
+                                        esc = 1;
+                                        break;
+                                    }
+                                } else {
+                                    esc = 1;
+                                    break;
+                                }
+                            } else {
+                                esc = 1;
+                                break;
+                            }
                         }
-                    }else if (out[i]=='|'){
-                        if(item->key[i] != ref[i] && word_search(word_table, p[i])==0){
-                            i++;
-                        }else{
-                            esc=1;
+                    } else {
+                        if (working_table->items[index]->value == ref_table->items[index]->value) {
+                            if (out[i] == '+') {
+                                if (item->key[i] == ref[i]) {
+                                    i++;
+                                } else {
+                                    esc = 1;
+                                    break;
+                                }
+                            } else if (out[i] == '*') {
+                                if (word_search(word_table, p[i]) != 0) {
+                                    i++;
+                                } else {
+                                    esc = 1;
+                                    break;
+                                }
+                            } else if (out[i] == '|') {
+                                if (item->key[i] != ref[i] && word_search(word_table, p[i]) == 0) {
+                                    i++;
+                                } else {
+                                    esc = 1;
+                                    break;
+                                }
+                            } else {
+                                esc = 1;
+                                break;
+                            }
+                        } else {
+                            esc = 1;
                             break;
                         }
                     }
                 }
-                i=0;
             }
-            if (esc==0){
-                if (bool==1 ){
-                    ht_delete(new_table, j, item);
-                }else {
+            i = 0;
+            if (ric==0){
+                if (esc == 0) {
                     ht_insert(new_table, item->key, 0, k);
+                }
+            }else{
+                if (esc == 1){
+                    ht_delete(new_table, j, item);
                 }
             }
         }
-        esc=0;
+        esc = 0;
     }
-    bool=1;
+    ric=1;
 }
