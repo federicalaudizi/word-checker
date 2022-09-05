@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 
 int ric = 0;
 
@@ -46,7 +47,7 @@ ht_item *create_item(char *key, int value, long int k);
 
 void ht_insert(HashTable *table, char *key, int value, long int k);
 
-void resize(int size, HashTable *table, long int k);
+HashTable *resize(int size, HashTable *table, long int k);
 
 void handle_collision(HashTable *table, unsigned long index, ht_item *item);
 
@@ -70,7 +71,7 @@ int word_search(HashTable *table, char key);
 void init_insert(HashTable *table, long int k, HashTable **arr_constr, char *must_be, HashTable *hash_ref_constrs,
                  HashTable *admitted_table);
 
-LinkedList * LinkedList_delete(LinkedList *head, char* key);
+LinkedList *LinkedList_delete(LinkedList *head, char *key);
 
 int main() {
     //freopen("output.txt", "w+", stdout);
@@ -82,8 +83,8 @@ int main() {
     c[strlen(c) - 1] = '\0';
     k = strtol(c, &ptr, 10);
     char input_str[k];
-    int init_hash_size = 53;
-
+    int init_hash_size = 101;
+    int i = 0;
 
     HashTable *table = create_table(init_hash_size);
     table->count = 0;
@@ -93,14 +94,21 @@ int main() {
         input_str[strlen(input_str) - 1] = '\0'; // removing \n at the end
 
         // starting new "game"
-
         if (strcmp(input_str, "+nuova_partita") == 0) {
             // step 2.
+            print_table(table);
             new_round(table, k);
             break;
 
         } else { // step 1. reading list of legal words
             // Inserting each string in my hash table
+            if (table->count == round((init_hash_size * 0.7))) {
+                print_table(table);
+                table = resize(init_hash_size, table, k);
+                init_hash_size = (init_hash_size * 2);
+                printf("%d", init_hash_size);
+                print_table(table);
+            }
             ht_insert(table, input_str, 0, k);
         }
 
@@ -160,27 +168,26 @@ void ht_insert(HashTable *table, char *key, int value, long int k) {
     }
 }
 
-void resize(int size, HashTable *table, long int k) {
+HashTable *resize(int size, HashTable *table, long int k) {
 
     int oldTableSize = size;
     HashTable *new_table;
+    int index;
 
-    size = oldTableSize * 2;
+    size = (oldTableSize * 2) + 1;
     new_table = create_table(size);
 
-    for (int i = 0; i < size; i++)
-        new_table->items[i] = NULL;
-
-    size = 0;
-
-    for (int hash = 0; hash < oldTableSize; hash++)
-        if (table->items[hash] != NULL) {
-            ht_insert(new_table, table->items[hash]->key, table->items[hash]->value, k);
+    for (int i = 0; i < oldTableSize; i++) {
+        if (table->items[i] != NULL) {
+            index = get_index(table->items[i]->key, size);
+            new_table->items[index] = table->items[i];
+            if (table->overflow_buckets[i] != NULL) {
+                new_table->overflow_buckets[index]=table->overflow_buckets[i];
+            }
         }
-
-    for (int i = 0; i <= oldTableSize; ++i) {
-        free(table->items[i]);
     }
+    free(table);
+    return new_table;
 }
 
 static LinkedList *allocate_list() {
@@ -203,9 +210,9 @@ static LinkedList *linkedlist_insert(LinkedList *list, ht_item *item) {
         node->next = NULL;
         list->next = node;
         return list;
-    }else{
+    } else {
         LinkedList *temp = list;
-        while (temp->next!=NULL) {
+        while (temp->next != NULL) {
             temp = temp->next;
         }
         LinkedList *node = allocate_list();
@@ -426,9 +433,6 @@ HashTable *compare(char *ref, char *p, long int k, HashTable *working_table, Has
                 if (item->value > 0) {
                     out[i] = '|';
                     item->value--;
-                    if (item->value == 0) {
-                        //todo vincolo 5
-                    }
                 } else {
                     out[i] = '/';
                 }
@@ -570,7 +574,7 @@ void new_round(HashTable *table, long int k) {
             } else {
                 new_table = compare(ref, p, k, working_table, table, new_table, ref_table, arr_constr, must_be,
                                     hash_constr_table, out);
-                if (strcmp(out, "ok")==0){
+                if (strcmp(out, "ok") == 0) {
                     break;
                 }
 
@@ -588,7 +592,7 @@ void new_round(HashTable *table, long int k) {
     if (i == n && strcmp(out, "ok") != 0) {
         printf("ko \n");
     }
-    if (i == n || strcmp(out, "ok") == 0 ) {
+    if (i == n || strcmp(out, "ok") == 0) {
         for (int j = 0; j < 2; j++) {
             fgets(p, 1000, stdin);
             p[strlen(p) - 1] = '\0';
@@ -597,7 +601,7 @@ void new_round(HashTable *table, long int k) {
             } else if (strcmp(p, "+nuova_partita") == 0) {
                 ric = 0;
                 free_table(new_table);
-                j=2;
+                j = 2;
                 new_round(table, k);
             }
         }
@@ -611,7 +615,7 @@ void ht_delete(HashTable *table, int index, ht_item *item) {
     // Deletes an item from the table
     LinkedList *head = table->overflow_buckets[index];
 
-    if (head == NULL ) {
+    if (head == NULL) {
         // No collision chain. Remove the item
         // and set table index to NULL
         table->items[index] = NULL;
@@ -621,7 +625,7 @@ void ht_delete(HashTable *table, int index, ht_item *item) {
     } else if (head != NULL) {
         // Collision Chain exists
 
-        if (strcmp(item->key, table->items[index]->key)==0){ //it the first item (not in the list
+        if (strcmp(item->key, table->items[index]->key) == 0) { //it the first item (not in the list
             free_item(item);
             table->count--;
             LinkedList *node = head;
@@ -631,9 +635,9 @@ void ht_delete(HashTable *table, int index, ht_item *item) {
             free_linkedlist(node);
             table->overflow_buckets[index] = head;
 
-        }else{
+        } else {
             table->count--;
-            table->overflow_buckets[index] = LinkedList_delete(head,item->key);
+            table->overflow_buckets[index] = LinkedList_delete(head, item->key);
         }
     }
 }
@@ -678,7 +682,7 @@ void constraints(char *out, char *ref, char *p, HashTable *table, HashTable *new
             if (head != NULL) {
                 while (item != NULL) {
 
-                     word_table = word_into_table(item->key);
+                    word_table = word_into_table(item->key);
 
                     while (i < k) {
                         x = ref[i];
@@ -750,25 +754,25 @@ void constraints(char *out, char *ref, char *p, HashTable *table, HashTable *new
                     }
                     i = 0;
                     if (ric == 0) {
-                        if (esc == 0){
+                        if (esc == 0) {
                             ht_insert(new_table, item->key, 0, k);
                         }
-                            if (head == NULL) {
-                                 break;
-                            } else {
-                                item = head->item;
-                                head = head->next;
-                            }
+                        if (head == NULL) {
+                            break;
+                        } else {
+                            item = head->item;
+                            head = head->next;
+                        }
 
                     } else {
-                        if (esc == 1){
+                        if (esc == 1) {
                             ht_delete(new_table, j, item);
                             if (head == NULL) {
                                 break;
                             }
                             item = new_table->items[j];
                             head = new_table->overflow_buckets[j];
-                        }else{
+                        } else {
                             if (head == NULL) {
                                 break;
                             } else {
@@ -942,26 +946,21 @@ int first_constraints(char *out, int i, ht_item *item, char *must_be, char *ref,
     return esc;
 }
 
-LinkedList* LinkedList_delete(LinkedList *head, char* key){
+LinkedList *LinkedList_delete(LinkedList *head, char *key) {
     //temp is used to freeing the memory
     LinkedList *temp;
 
     //key found on the head node.
     //move to head node to the next and free the head.
-    if(head->item->key == key)
-    {
+    if (head->item->key == key) {
         temp = head;    //backup to free the memory
         head = head->next;
         free(temp);
-    }
-    else
-    {
-        LinkedList *current  = head;
-        while(current->next != NULL)
-        {
+    } else {
+        LinkedList *current = head;
+        while (current->next != NULL) {
             //if yes, we need to delete the current->next node
-            if(current->next->item->key == key)
-            {
+            if (current->next->item->key == key) {
                 temp = current->next;
                 //node will be disconnected from the linked list.
                 current->next = current->next->next;
