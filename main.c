@@ -70,8 +70,11 @@ int word_search(HashTable *table, char key);
 void init_insert(HashTable *table, long int k, HashTable **arr_constr, char *must_be, HashTable *hash_ref_constrs,
                  HashTable *admitted_table);
 
+LinkedList * LinkedList_delete(LinkedList *head, char* key);
+
 int main() {
     //freopen("output.txt", "w+", stdout);
+    //freopen("slide.txt", "r", stdin);
     long int k;
     char *ptr;
     char c[2];//I need it for fgets
@@ -80,6 +83,7 @@ int main() {
     k = strtol(c, &ptr, 10);
     char input_str[k];
     int init_hash_size = 53;
+
 
     HashTable *table = create_table(init_hash_size);
     table->count = 0;
@@ -199,22 +203,20 @@ static LinkedList *linkedlist_insert(LinkedList *list, ht_item *item) {
         node->next = NULL;
         list->next = node;
         return list;
+    }else{
+        LinkedList *temp = list;
+        while (temp->next!=NULL) {
+            temp = temp->next;
+        }
+        LinkedList *node = allocate_list();
+        node->item = item;
+        node->next = NULL;
+        temp->next = node;
+        return list;
     }
-
-    LinkedList *temp = list;
-    while (temp->next->next) {
-        temp = temp->next;
-    }
-
-    LinkedList *node = allocate_list();
-    node->item = item;
-    node->next = NULL;
-    temp->next = node;
-
-    return list;
 }
 
-static ht_item *linkedlist_remove(LinkedList *list) {
+/*static ht_item *linkedlist_remove(LinkedList *list) {
     // Removes the head from the linked list
     // and returns the item of the popped element
     if (!list)
@@ -231,7 +233,7 @@ static ht_item *linkedlist_remove(LinkedList *list) {
     free(temp->item);
     free(temp);
     return it;
-}
+}*/
 
 static void free_linkedlist(LinkedList *list) {
     LinkedList *temp = list;
@@ -305,6 +307,7 @@ void handle_collision(HashTable *table, unsigned long index, ht_item *item) {
         return;
     } else {
         // Insert to the list
+
         table->overflow_buckets[index] = linkedlist_insert(head, item);
         return;
     }
@@ -394,10 +397,9 @@ int ht_admitted_search(HashTable *table, char *key) {
     return 0;
 }
 
-HashTable *
-compare(char *ref, char *p, long int k, HashTable *working_table, HashTable *table, HashTable *new_table,
-        HashTable *ref_table, HashTable **arr_constrs, char *must_be, HashTable *hash_constr_table,
-        char *out) {
+HashTable *compare(char *ref, char *p, long int k, HashTable *working_table, HashTable *table, HashTable *new_table,
+                   HashTable *ref_table, HashTable **arr_constrs, char *must_be, HashTable *hash_constr_table,
+                   char *out) {
 
     int count = 0;
 
@@ -412,8 +414,8 @@ compare(char *ref, char *p, long int k, HashTable *working_table, HashTable *tab
 
     if (count == k) {
         out[0] = 'o';
-        out[1]= 'k';
-        out[2]='\0';
+        out[1] = 'k';
+        out[2] = '\0';
         printf("ok\n");
         return new_table;
     }
@@ -439,8 +441,8 @@ compare(char *ref, char *p, long int k, HashTable *working_table, HashTable *tab
     constraints(out, ref, p, table, new_table, ref_table, working_table, hash_constr_table, must_be, arr_constrs);
 
     for (int i = 0; i < k; ++i) {
-        if (out[i]=='*'){
-            out[i]='/';
+        if (out[i] == '*') {
+            out[i] = '/';
         }
     }
     printf("%s \n", out);
@@ -521,7 +523,7 @@ void new_round(HashTable *table, long int k) {
         must_be[i] = '+';
         out[i] = '0';
         arr_constr[i] = create_table(64);
-        arr_constr[i] ->count=0;
+        arr_constr[i]->count = 0;
     }
 
     fgets(ref, k + 2, stdin);
@@ -540,7 +542,6 @@ void new_round(HashTable *table, long int k) {
     int bool;
 
     HashTable *working_table = word_into_table(ref);
-
 
     while (i < n) {
         fgets(p, 1000, stdin);
@@ -569,6 +570,9 @@ void new_round(HashTable *table, long int k) {
             } else {
                 new_table = compare(ref, p, k, working_table, table, new_table, ref_table, arr_constr, must_be,
                                     hash_constr_table, out);
+                if (strcmp(out, "ok")==0){
+                    break;
+                }
 
                 for (int j = 0; j < 64; j++) {
                     if (ref_table->items[j] != NULL) {
@@ -584,19 +588,21 @@ void new_round(HashTable *table, long int k) {
     if (i == n && strcmp(out, "ok") != 0) {
         printf("ko \n");
     }
-    if (i == n || strcmp(out, "ok") == 0) {  //out non è mai ok al max ++++++++
+    if (i == n || strcmp(out, "ok") == 0 ) {
         for (int j = 0; j < 2; j++) {
             fgets(p, 1000, stdin);
             p[strlen(p) - 1] = '\0';
             if (strcmp(p, "+inserisci_inizio") == 0) {
                 init_insert(table, k, arr_constr, must_be, hash_constr_table, table);
             } else if (strcmp(p, "+nuova_partita") == 0) {
-                ric=0;
+                ric = 0;
                 free_table(new_table);
+                j=2;
                 new_round(table, k);
             }
         }
     }
+    return;
 }
 
 void ht_delete(HashTable *table, int index, ht_item *item) {
@@ -605,8 +611,7 @@ void ht_delete(HashTable *table, int index, ht_item *item) {
     // Deletes an item from the table
     LinkedList *head = table->overflow_buckets[index];
 
-
-    if (head == NULL) {
+    if (head == NULL ) {
         // No collision chain. Remove the item
         // and set table index to NULL
         table->items[index] = NULL;
@@ -615,17 +620,21 @@ void ht_delete(HashTable *table, int index, ht_item *item) {
         return;
     } else if (head != NULL) {
         // Collision Chain exists
-        // Remove this item and set the head of the list
-        // as the new item
-        free_item(item);
-        table->count--;
-        LinkedList *node = head;
-        head = head->next;
-        node->next = NULL;
-        table->items[index] = create_item(node->item->key, node->item->value, k);
-        free_linkedlist(node);
-        table->overflow_buckets[index] = head;
 
+        if (strcmp(item->key, table->items[index]->key)==0){ //it the first item (not in the list
+            free_item(item);
+            table->count--;
+            LinkedList *node = head;
+            head = head->next;
+            node->next = NULL;
+            table->items[index] = create_item(node->item->key, node->item->value, k); //its somewhere in the list
+            free_linkedlist(node);
+            table->overflow_buckets[index] = head;
+
+        }else{
+            table->count--;
+            table->overflow_buckets[index] = LinkedList_delete(head,item->key);
+        }
     }
 }
 
@@ -633,7 +642,7 @@ void ht_delete(HashTable *table, int index, ht_item *item) {
 int word_search(HashTable *table, char key) { //se c'è ritorno 0
     int index = ref_into_hash_index((int) key);
 
-    if (table->items[index]!= NULL){  // Ensure that we move to a non NULL item
+    if (table->items[index] != NULL) {  // Ensure that we move to a non NULL item
         ht_item *item = table->items[index];
         if (item->key[0] == key)
             return 0;
@@ -662,13 +671,14 @@ void constraints(char *out, char *ref, char *p, HashTable *table, HashTable *new
             head = new_table->overflow_buckets[j];
         }
 
-
         if (item != NULL) {
             word_table = word_into_table(item->key);
 
+
             if (head != NULL) {
                 while (item != NULL) {
-                    word_table = word_into_table(item->key);
+
+                     word_table = word_into_table(item->key);
 
                     while (i < k) {
                         x = ref[i];
@@ -687,6 +697,7 @@ void constraints(char *out, char *ref, char *p, HashTable *table, HashTable *new
                                         }
                                     }
                                     esc = first_constraints(out, i, item, must_be, ref, 0, word_table, p, arr_constr);
+                                    i++;
                                     if (esc == 1) {
                                         break;
                                     }
@@ -697,6 +708,7 @@ void constraints(char *out, char *ref, char *p, HashTable *table, HashTable *new
                             } else {
                                 if (ref_table->items[index]->value == working_table->items[index]->value) {
                                     esc = first_constraints(out, i, item, must_be, ref, 0, word_table, p, arr_constr);
+                                    i++;
                                     if (esc == 1) {
                                         break;
                                     }
@@ -714,6 +726,7 @@ void constraints(char *out, char *ref, char *p, HashTable *table, HashTable *new
                                         }
                                     }
                                     esc = first_constraints(out, i, item, must_be, ref, 0, word_table, p, arr_constr);
+                                    i++;
                                     if (esc == 1) {
                                         break;
                                     }
@@ -735,14 +748,36 @@ void constraints(char *out, char *ref, char *p, HashTable *table, HashTable *new
                             }
                         }
                     }
-                    if (head == NULL) {
-                        break;
+                    i = 0;
+                    if (ric == 0) {
+                        if (esc == 0){
+                            ht_insert(new_table, item->key, 0, k);
+                        }
+                            if (head == NULL) {
+                                 break;
+                            } else {
+                                item = head->item;
+                                head = head->next;
+                            }
+
                     } else {
-                        item = head->item;
-                        head = head->next;
+                        if (esc == 1){
+                            ht_delete(new_table, j, item);
+                            if (head == NULL) {
+                                break;
+                            }
+                            item = new_table->items[j];
+                            head = new_table->overflow_buckets[j];
+                        }else{
+                            if (head == NULL) {
+                                break;
+                            } else {
+                                item = head->item;
+                                head = head->next;
+                            }
+                        }
                     }
                 }
-                i = 0;
             } else {
                 while (i < k) {
                     x = ref[i];
@@ -756,7 +791,10 @@ void constraints(char *out, char *ref, char *p, HashTable *table, HashTable *new
                                     hash_constr_table->items[index] = constr_items;
                                     hash_constr_table->count++;
                                 } else {
-                                    hash_constr_table->items[index]->value = ref_table->items[index]->value;
+                                    if (hash_constr_table->items[index]->value < word_table->items[index]->value) {
+                                        hash_constr_table->items[index]->value = ref_table->items[index]->value;
+                                    }
+                                    //hash_constr_table->items[index]->value = ref_table->items[index]->value;
                                 }
                                 esc = first_constraints(out, i, item, must_be, ref, 0, word_table, p, arr_constr);
                                 i++;
@@ -849,7 +887,7 @@ void constraints(char *out, char *ref, char *p, HashTable *table, HashTable *new
             }
         }
     }
-    ric=1;
+    ric = 1;
 }
 
 int first_constraints(char *out, int i, ht_item *item, char *must_be, char *ref, int esc, HashTable *word_table,
@@ -864,9 +902,9 @@ int first_constraints(char *out, int i, ht_item *item, char *must_be, char *ref,
         }
     } else if (out[i] == '*') {
         // letter that CANNOT appear anywhere in p
-        if (word_search(word_table, p[i]) != 0) { // if p[i] not in parola ammissibile
+        if (word_search(word_table, p[i]) != 0) {// if p[i] not in parola ammissibile
             for (int l = 0; l < k; l++) {
-                if (word_search(arr_constr[l], p[i])!=0) {
+                if (word_search(arr_constr[l], p[i]) != 0) {
                     // create table
                     ht_item *new_item = (ht_item *) malloc(sizeof(ht_item));
                     new_item->key = (char *) malloc(k);
@@ -886,7 +924,7 @@ int first_constraints(char *out, int i, ht_item *item, char *must_be, char *ref,
             if (arr_constr[i]->count == 0) {
                 // create table
                 arr_constr[i] = word_into_table(&p[i]);
-            } else if(word_search(arr_constr[i], p[i])!=0){
+            } else if (word_search(arr_constr[i], p[i]) != 0) {
                 // insert into existing table
                 ht_item *new_item = (ht_item *) malloc(sizeof(ht_item));
                 new_item->key = (char *) malloc(k);
@@ -902,4 +940,38 @@ int first_constraints(char *out, int i, ht_item *item, char *must_be, char *ref,
     }
 
     return esc;
+}
+
+LinkedList* LinkedList_delete(LinkedList *head, char* key){
+    //temp is used to freeing the memory
+    LinkedList *temp;
+
+    //key found on the head node.
+    //move to head node to the next and free the head.
+    if(head->item->key == key)
+    {
+        temp = head;    //backup to free the memory
+        head = head->next;
+        free(temp);
+    }
+    else
+    {
+        LinkedList *current  = head;
+        while(current->next != NULL)
+        {
+            //if yes, we need to delete the current->next node
+            if(current->next->item->key == key)
+            {
+                temp = current->next;
+                //node will be disconnected from the linked list.
+                current->next = current->next->next;
+                free(temp);
+                break;
+            }
+                //Otherwise, move the current node and proceed
+            else
+                current = current->next;
+        }
+    }
+    return head;
 }
