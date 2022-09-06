@@ -73,6 +73,8 @@ void init_insert(HashTable *table, long int k, HashTable **arr_constr, char *mus
 
 LinkedList *LinkedList_delete(LinkedList *head, char *key);
 
+static LinkedList *allocate_list();
+
 int main() {
     //freopen("output.txt", "w+", stdout);
     //freopen("slide.txt", "r", stdin);
@@ -97,17 +99,19 @@ int main() {
         if (strcmp(input_str, "+nuova_partita") == 0) {
             // step 2.
             print_table(table);
+            printf("\n %d", table->count);
             new_round(table, k);
             break;
 
         } else { // step 1. reading list of legal words
             // Inserting each string in my hash table
             if (table->count == round((init_hash_size * 0.7))) {
-                print_table(table);
+                printf("qui: %d", table->count);
+                //print_table(table);
+                init_hash_size = (init_hash_size * 2)+1;
                 table = resize(init_hash_size, table, k);
-                init_hash_size = (init_hash_size * 2);
-                printf("%d", init_hash_size);
-                print_table(table);
+                printf("oppure qui: %d", table->count);
+                printf("ciao");
             }
             ht_insert(table, input_str, 0, k);
         }
@@ -169,7 +173,25 @@ void ht_insert(HashTable *table, char *key, int value, long int k) {
 }
 
 HashTable *resize(int size, HashTable *table, long int k) {
+    HashTable *new_table = create_table(size);
 
+    for (int i = 0; i < (size-1)/2; i++) {
+        if (table->items[i] != NULL) {
+            ht_insert(new_table, table->items[i]->key, 0, k);
+            if (table->overflow_buckets[i]!=NULL){
+                LinkedList* temp = table->overflow_buckets[i];
+                while (temp!=NULL){
+                    ht_insert(new_table, table->overflow_buckets[i]->item->key, 0, k);
+                    temp=temp->next;
+                }
+            }
+        }
+    }
+    return new_table;
+}
+
+
+/*HashTable *resize(int size, HashTable *table, long int k) {
     int oldTableSize = size;
     HashTable *new_table;
     int index;
@@ -178,17 +200,59 @@ HashTable *resize(int size, HashTable *table, long int k) {
     new_table = create_table(size);
 
     for (int i = 0; i < oldTableSize; i++) {
-        if (table->items[i] != NULL) {
+       cccccccc
             index = get_index(table->items[i]->key, size);
-            new_table->items[index] = table->items[i];
-            if (table->overflow_buckets[i] != NULL) {
-                new_table->overflow_buckets[index]=table->overflow_buckets[i];
+            if (index==51){
+                printf("ciao");
+            }
+            if (new_table->items[index] != NULL){
+                if (new_table->overflow_buckets[index]!= NULL){
+                    LinkedList* temp=new_table->overflow_buckets[index];
+                    while (temp->next!= NULL){
+                        temp= temp->next;
+                    }
+                    LinkedList *node = allocate_list();
+                    node->item = table->items[i];
+                    node->next = NULL;
+                    temp->next = node;
+                    new_table->count++;
+                    if (table->overflow_buckets[i] != NULL) {
+                        node->next = table->overflow_buckets[i];
+                        while (table->overflow_buckets[i]!= NULL ){
+                            table->overflow_buckets[i]=table->overflow_buckets[i]->next;
+                            new_table->count++;
+                        }
+                    }
+                }else{
+                    LinkedList *head = new_table->overflow_buckets[index];
+                    head = allocate_list();
+                    head->item = table->items[i];
+                    new_table->overflow_buckets[index] = head;
+                    new_table->count++;
+                    if (table->overflow_buckets[i] != NULL) {
+                        new_table->overflow_buckets[index]->next = table->overflow_buckets[i];
+                        while (table->overflow_buckets[i]!= NULL ){
+                            table->overflow_buckets[i]=table->overflow_buckets[i]->next;
+                            new_table->count++;
+                        }
+                    }
+                }
+            }else{
+                new_table->items[index] = table->items[i];
+                new_table->count++;
+                if (table->overflow_buckets[i] != NULL) {
+                    new_table->overflow_buckets[index]=table->overflow_buckets[i];
+                    while (table->overflow_buckets[i]!= NULL ){
+                        table->overflow_buckets[i]=table->overflow_buckets[i]->next;
+                        new_table->count++;
+                    }
+                }
             }
         }
     }
     free(table);
     return new_table;
-}
+}*/
 
 static LinkedList *allocate_list() {
     // Allocates memory for a Linkedlist pointer
