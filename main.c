@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
+#include <unistd.h>
 
 int ric = 0;
 
@@ -24,6 +25,12 @@ typedef struct {
     int size;
     int count;
 } HashTable;
+
+void stampa_filtrate(HashTable* table);
+
+void quicksort(char* arr[], int length);
+
+void swap(char **a, char **b);
 
 int
 first_constraints(char *out, int i, ht_item *item, char *must_be, char *ref, int esc, HashTable *word_table, char *p,
@@ -80,6 +87,8 @@ int main() {
     char *ptr;
     char c[4];//I need it for fgets
     fgets(c, 5, stdin);
+    if (feof(stdin))
+        return 1;
     c[strlen(c) - 1] = '\0';
     k = strtol(c, &ptr, 10);
     char input_str[k];
@@ -90,6 +99,8 @@ int main() {
 
     while (1) {
         fgets(input_str, 1000, stdin);
+        if (feof(stdin))
+            break;
         input_str[strlen(input_str) - 1] = '\0'; // removing \n at the end
 
         // starting new "game"
@@ -531,6 +542,8 @@ void init_insert(HashTable *table, long int k, HashTable **arr_constr, char *mus
     int p_len = (k + 1 > 20 ) ? (int)k+1 : 20;
     char p[p_len];
     fgets(p, p_len+1, stdin);
+    if (feof(stdin))
+        return;
     p[strlen(p) - 1] = '\0';
     HashTable *word_table;
 
@@ -551,6 +564,8 @@ void init_insert(HashTable *table, long int k, HashTable **arr_constr, char *mus
                             }
                         }
                     }
+                } else{
+                    break;
                 }
             } else {
 
@@ -566,6 +581,8 @@ void init_insert(HashTable *table, long int k, HashTable **arr_constr, char *mus
             }
         }
         fgets(p, 1000, stdin);
+        if (feof(stdin))
+            break;
         p[strlen(p) - 1] = '\0';
     }
 }
@@ -587,12 +604,16 @@ void new_round(HashTable *table, long int k) {
     }
 
     fgets(ref, k + 2, stdin);
+    if (feof(stdin))
+        return;
     ref[k] = '\0';
 
     HashTable *ref_table = word_into_table(ref);
 
     long int n;
     fgets(n_max, 5, stdin);
+    if (feof(stdin))
+        return;
     n_max[(strlen(n_max) - 1)] = '\0';
     n=atoi(n_max);
 
@@ -617,7 +638,11 @@ void new_round(HashTable *table, long int k) {
                 init_insert(table, k, arr_constr, must_be, hash_constr_table, table);
             }
         } else if (strncmp(p, "+stampa_filtrate", 16) == 0) {
-            //todo filtrate
+            if (new_table->count>0){
+                stampa_filtrate(new_table);
+            }else{
+                stampa_filtrate(table); //todo sarebbe print table
+            }
         } else {
             p[k] = '\0';
             bool = ht_admitted_search(table, p);
@@ -648,6 +673,8 @@ void new_round(HashTable *table, long int k) {
     if (i == n || strcmp(out, "ok") == 0) {
         for (int j = 0; j < 2; j++) {
             fgets(p, 1000, stdin);
+            if (feof(stdin))
+                break;
             p[strlen(p) - 1] = '\0';
             if (strncmp(p, "+inserisci_inizio", 17) == 0) {
                 init_insert(table, k, arr_constr, must_be, hash_constr_table, table);
@@ -1026,4 +1053,70 @@ LinkedList *LinkedList_delete(LinkedList *head, char *key) {
         }
     }
     return head;
+}
+
+/* Swaps position of strings in array (char**) */
+void swap(char **a, char **b) {
+    char *temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+void quicksort(char* arr[], int length) {
+    unsigned int i, piv = 0;
+    if (length <= 1)
+        return;
+
+    for (i = 0; i < length; i++) {
+        // if curr str < pivot str, move curr into lower array and  lower++(pvt)
+        if (strcmp(arr[i], arr[length -1]) < 0) 	//use string in last index as pivot
+            swap(arr + i, arr + piv++);
+    }
+
+
+    //move pivot to "middle"
+    swap(arr + piv, arr + length - 1);
+
+    //recursively sort upper and lower
+    quicksort(arr, piv++);			//set size to current pvt and increase for next call
+    quicksort(arr + piv, length - piv);
+}
+
+void stampa_filtrate(HashTable* table){
+    ht_item* item;
+    LinkedList* head;
+    char* filtered_words_array[table->count];
+    int index=0;
+    char parola[6]="GbAbG\0";
+
+    if (ht_admitted_search(table, parola)){
+        print_table(table);
+    }
+
+    for (int i = 0; i < table->size; i++) {
+        item = table->items[i];
+        head = table->overflow_buckets[i];
+        if (item != NULL) {
+            if (head != NULL) {
+                while (item != NULL) {
+                    filtered_words_array[index]= item->key;
+                    index++;
+
+                    if (head == NULL) {
+                        break;
+                    }
+                    item = head->item;
+                    head = head->next;
+                }
+            }else{
+                filtered_words_array[index]= item->key;
+                index++;
+            }
+        }
+    }
+    quicksort(filtered_words_array, table->count);
+    for (int i=0; i < table->count; i++) {
+        printf("%s\n", filtered_words_array[i]);
+
+    }
 }
