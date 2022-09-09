@@ -37,7 +37,7 @@ void swap(char **a, char **b);
 
 int
 first_constraints(char *out, int i, ht_item *item, char *must_be, char *ref, int esc, HashTable *word_table, char *p,
-                  HashTable **arr_constr, HashTable *hash_constr_table);
+                  HashTable **arr_constr, HashTable *hash_constr_table, HashTable* ref_table);
 
 void
 constraints(char *out, char *ref, char *p, HashTable *table, HashTable *new_table, HashTable *ref_table,
@@ -615,7 +615,6 @@ void new_round(HashTable *table, long int k) {
                 if (strcmp(out, "ok") == 0) {
                     break;
                 }
-
                 reset_working_table(ref_table, working_table);
                 i++;
             }
@@ -637,19 +636,19 @@ void new_round(HashTable *table, long int k) {
                 init_insert(table, k, arr_constr, must_be, hash_constr_table, table);
             } else if (strncmp(p, "+nuova_partita", 14) == 0) {
                 ric = 0;
-                free_table(new_table);
                 j = 2;
                 new_round(table, k);
             }
         }
 
-        //print_table(new_table);
-        //free_table(new_table);
+        free_table(new_table);
+        free_table(ref_table);
         free_table(working_table);
 
         for (int j = 0; j < k; ++j) {
             free_table(arr_constr[j]);
         }
+        //free_table(hash_constr_table);
         return;
     }
 }
@@ -773,7 +772,7 @@ void constraints(char *out, char *ref, char *p, HashTable *table, HashTable *new
                                         }
                                     }
                                     esc = first_constraints(out, i, item, must_be, ref, 0, word_table, p, arr_constr,
-                                                            hash_constr_table);
+                                                            hash_constr_table, ref_table);
                                     i++;
                                     if (esc == 1) {
                                         break;
@@ -783,6 +782,7 @@ void constraints(char *out, char *ref, char *p, HashTable *table, HashTable *new
                                     break;
                                 }
                             } else {
+                                index = ref_into_hash_index((int)ref[i]);
                                 ht_item* temp_item1 = ht_get(ref_table, ref_i);
                                 ht_item* temp_item2 = ht_get(word_table, ref_i);
                                 if (temp_item1->value == temp_item->value) {
@@ -859,6 +859,7 @@ void constraints(char *out, char *ref, char *p, HashTable *table, HashTable *new
                             }
                         }
                     }
+                    free_table(word_table);
                 }
             } else {
                 word_table = create_table(k);
@@ -912,6 +913,7 @@ void constraints(char *out, char *ref, char *p, HashTable *table, HashTable *new
                                 }
                             } else if ((temp_item1->value - temp_item->value) <=
                                        temp_item2->value) {
+                                index = ref_into_hash_index((int)ref[i]);
                                 if (hash_constr_table->items[index] == NULL) {
                                     ref_i[0] = ref[i];
                                     constr_items = create_item(ref_i, ref_item->value, k);
@@ -959,6 +961,7 @@ void constraints(char *out, char *ref, char *p, HashTable *table, HashTable *new
                         ht_delete(new_table, j, item);
                     }
                 }
+                free_table(word_table);
             }
         }
     }
@@ -966,15 +969,8 @@ void constraints(char *out, char *ref, char *p, HashTable *table, HashTable *new
 }
 
 int first_constraints(char *out, int i, ht_item *item, char *must_be, char *ref, int esc, HashTable *word_table,
-                      char *p, HashTable **arr_constr, HashTable* hash_constr_table) {
+                      char *p, HashTable **arr_constr, HashTable* hash_constr_table, HashTable* ref_table) {
     int k = strlen(ref);
-    HashTable *ref_table = create_table(k);
-    for (int j = 0; j < k; ++j) {
-        char ref_i[2];
-        ref_i[0] = ref[j];
-        ref_i[1] = '\0';
-        ht_insert(ref_table, ref_i, 1, k);
-    }
 
     if (out[i] == '+') {
         // letter that MUST appear at p[i]
